@@ -16,43 +16,50 @@ export function useFaceAnalyzer() {
 	const faceLandmarkerRef = useRef<FaceLandmarker | null>(null)
 
 	useEffect(() => {
+		let active = true
+
 		const loadModel = async () => {
 			try {
 				const filesetResolver = await FilesetResolver.forVisionTasks(
 					'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm',
 				)
 
-				faceLandmarkerRef.current = await FaceLandmarker.createFromOptions(
-					filesetResolver,
-					{
-						baseOptions: {
-							modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
-							delegate: 'GPU',
-						},
-						outputFaceBlendshapes: true,
-						runningMode: 'IMAGE',
-						numFaces: 1,
+				const model = await FaceLandmarker.createFromOptions(filesetResolver, {
+					baseOptions: {
+						modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+						delegate: 'GPU',
 					},
-				)
+					outputFaceBlendshapes: true,
+					runningMode: 'IMAGE',
+					numFaces: 1,
+				})
 
-				setIsLoadingModel(false)
+				if (active) {
+					faceLandmarkerRef.current = model
+					setIsLoadingModel(false)
+				} else {
+					model.close()
+				}
 			} catch (err: any) {
-				console.error('Failed to load MediaPipe model:', err)
-				setError('Failed to load AI model. Please refresh.')
-				setIsLoadingModel(false)
+				if (active) {
+					console.error('Failed to load MediaPipe model:', err)
+					setError('Failed to load AI model. Please refresh.')
+					setIsLoadingModel(false)
+				}
 			}
 		}
 
 		loadModel()
 
 		return () => {
-			try {
-				if (faceLandmarkerRef.current) {
+			active = false
+			if (faceLandmarkerRef.current) {
+				try {
 					faceLandmarkerRef.current.close()
 					faceLandmarkerRef.current = null
+				} catch (e) {
+					// Ignore cleanup errors during hot reload
 				}
-			} catch (cleanupError) {
-				console.warn('Failed to close MediaPipe model:', cleanupError)
 			}
 		}
 	}, [])
