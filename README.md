@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LooksMax - AI Face Rating Platform
 
-## Getting Started
+LooksMax is a cyberpunk-themed web application that analyzes facial aesthetics using AI. Users can upload photos to receive detailed scores on various facial features (jawline, skin, symmetry, etc.) along with personalized recommendations.
 
-First, run the development server:
+## 🚀 Tech Stack
+
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Database & Auth**: Supabase
+- **Styling**: Tailwind CSS v4 (Cyberpunk Theme)
+- **UI Components**: shadcn/ui
+- **AI**: Pluggable architecture (Mock / OpenAI)
+
+## ✨ Features
+
+- **AI Analysis**: Instant scoring of facial features.
+- **History**: Track your ratings over time.
+- **Admin Dashboard**: Manage users and view all ratings.
+- **Secure Auth**: Email/Password authentication with Supabase.
+- **Cyberpunk UI**: Modern, square-edged, neon-aesthetic design.
+- **Responsive**: Fully optimized for mobile and desktop.
+
+## 🛠️ Setup Instructions
+
+### 1. Prerequisites
+
+- Node.js 18+
+- npm or pnpm
+- Supabase Account
+
+### 2. Environment Variables
+
+Create `.env.local`:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+AI_MODE=mock # or 'openai'
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3. Database Setup (Supabase)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Run the SQL script located in `supabase/schema.sql` in your Supabase SQL Editor. This will:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Create `photos` and `ratings` tables.
+- Enable Row Level Security (RLS).
+- Set up Storage policies.
 
-## Learn More
+### 4. Auth Settings (Critical)
 
-To learn more about Next.js, take a look at the following resources:
+1.  Go to Supabase Dashboard -> Authentication -> Providers -> Email.
+2.  **Disable "Confirm email"** for instant development login.
+3.  If enabled, add `http://localhost:3000/auth/callback` to Redirect URLs.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 5. Run Locally
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm install
+npm run dev
+```
 
-## Deploy on Vercel
+Open [http://localhost:3000](http://localhost:3000).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🦾 AI Logic
+
+For a detailed explanation of how the face analysis works, see [ABOUT_AI.md](./ABOUT_AI.md).
