@@ -76,7 +76,7 @@ export function Sidebar({ isAdmin }: SidebarProps) {
 			{/* Sidebar Container */}
 			<aside
 				className={cn(
-					'fixed left-0 top-0 z-40 h-screen w-64 transform border-r-[1px] border-primary/20 bg-black/90 backdrop-blur-xl transition-transform duration-200 ease-in-out md:translate-x-0 font-mono',
+					'fixed left-0 top-0 z-40 h-screen w-64 transform border-r-[1px] border-border bg-background/95 backdrop-blur-xl transition-transform duration-200 ease-in-out md:translate-x-0 font-mono',
 					isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full',
 				)}
 			>
@@ -89,7 +89,7 @@ export function Sidebar({ isAdmin }: SidebarProps) {
 							href='/'
 							className='flex items-center gap-2 font-semibold relative z-10 w-full'
 						>
-							<span className='text-xl font-bold tracking-widest text-primary text-shadow-neon w-full text-center'>
+							<span className='text-xl font-bold tracking-widest text-primary dark:text-shadow-neon w-full text-center'>
 								LOOKSMAX_AI
 							</span>
 						</Link>
@@ -124,9 +124,9 @@ export function Sidebar({ isAdmin }: SidebarProps) {
 					</nav>
 
 					{/* Footer */}
-					<div className='border-t border-primary/20 p-4 space-y-4 bg-primary/5'>
+					<div className='border-t border-border p-4 space-y-4 bg-muted/20'>
 						{/* Stats Mocks */}
-						<div className='grid grid-cols-2 gap-2 text-[10px] items-center text-primary/60 font-mono'>
+						<div className='grid grid-cols-2 gap-2 text-[10px] items-center text-muted-foreground font-mono'>
 							<div>SYS.STATUS:</div>
 							<div className='text-right text-green-500'>ONLINE</div>
 							<div>VER:</div>
@@ -141,7 +141,7 @@ export function Sidebar({ isAdmin }: SidebarProps) {
 						</div>
 						<Button
 							variant='destructive'
-							className='w-full justify-center gap-2 font-mono uppercase tracking-widest bg-red-900/20 text-red-500 border border-red-900/50 hover:bg-red-900/40'
+							className='w-full justify-center gap-2 font-mono uppercase tracking-widest'
 							onClick={handleSignOut}
 						>
 							<LogOut className='h-4 w-4' />

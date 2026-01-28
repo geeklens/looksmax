@@ -31,7 +31,7 @@ export function DeleteButton({ ratingId }: { ratingId: string }) {
 		<Button
 			variant='ghost'
 			size='icon'
-			className='text-muted-foreground hover:text-red-500 hover:bg-red-500/10 h-8 w-8'
+			className='bg-black/40 hover:bg-red-500/80 text-white/70 hover:text-white border border-white/10 hover:border-red-500 h-8 w-8 backdrop-blur-sm transition-all shadow-lg overflow-hidden'
 			onClick={handleDelete}
 			disabled={isPending}
 		>

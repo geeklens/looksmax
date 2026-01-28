@@ -1,8 +1,8 @@
 'use client'
 
-import { manageUser } from '@/app/actions'
+import { manageUser, adminResetPassword } from '@/app/actions'
 import { Button } from '@/components/ui/button'
-import { Ban, Trash2, ShieldCheck, ShieldAlert } from 'lucide-react'
+import { Ban, Trash2, ShieldCheck, ShieldAlert, Key } from 'lucide-react'
 import { useState, useTransition } from 'react'
 
 interface UserActionsProps {
@@ -35,27 +35,58 @@ export function UserActions({ userId }: UserActionsProps) {
 		})
 	}
 
+	const handlePasswordReset = () => {
+		const newPassword = prompt(
+			'Enter NEW password for this user (min 6 chars):',
+		)
+		if (!newPassword) return
+
+		if (newPassword.length < 6) {
+			alert('Password too short!')
+			return
+		}
+
+		startTransition(async () => {
+			try {
+				await adminResetPassword(userId, newPassword)
+				alert('Password updated successfully!')
+			} catch (err: any) {
+				alert('Reset failed: ' + (err.message || 'Unknown error'))
+			}
+		})
+	}
+
 	return (
-		<div className='flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
+		<div className='flex items-center gap-2'>
 			<Button
 				variant='ghost'
 				size='icon'
-				className='h-6 w-6 text-amber-500 hover:text-amber-600 hover:bg-amber-500/10'
-				onClick={() => handleAction('ban')}
+				className='h-7 w-7 text-blue-500 bg-blue-500/5 hover:text-white hover:bg-blue-600 border border-blue-500/20'
+				onClick={handlePasswordReset}
 				disabled={isPending}
-				title='Ban User'
+				title='Reset Password'
 			>
-				<Ban className='w-3 h-3' />
+				<Key className='w-3.5 h-3.5' />
 			</Button>
 			<Button
 				variant='ghost'
 				size='icon'
-				className='h-6 w-6 text-red-500 hover:text-red-600 hover:bg-red-500/10'
+				className='h-7 w-7 text-amber-500 bg-amber-500/5 hover:text-white hover:bg-amber-600 border border-amber-500/20'
+				onClick={() => handleAction('ban')}
+				disabled={isPending}
+				title='Ban User'
+			>
+				<Ban className='w-3.5 h-3.5' />
+			</Button>
+			<Button
+				variant='ghost'
+				size='icon'
+				className='h-7 w-7 text-red-500 bg-red-500/5 hover:text-white hover:bg-red-600 border border-red-500/20'
 				onClick={() => handleAction('delete')}
 				disabled={isPending}
 				title='Delete User'
 			>
-				<Trash2 className='w-3 h-3' />
+				<Trash2 className='w-3.5 h-3.5' />
 			</Button>
 		</div>
 	)

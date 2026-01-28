@@ -44,11 +44,44 @@
 
 @layer base {
   :root {
+    /* Standard Light Mode */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+
+    /* Readable Green for Light Mode */
+    --secondary: 150 100% 35%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+
+    /* Readable Purple for Light Mode */
+    --accent: 300 100% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 10% 3.9%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
     /* Cyberpunk HUD Theme */
     --background: 240 25% 4%;
-    /* #08080d */
     --foreground: 180 100% 50%;
-    /* Bright Cyan text */
 
     --card: 240 25% 6%;
     --card-foreground: 180 100% 50%;
@@ -57,15 +90,15 @@
     --popover-foreground: 180 100% 50%;
 
     --primary: 35 100% 55%;
-    /* Orange/Amber */
     --primary-foreground: 240 25% 4%;
 
     --secondary: 150 100% 40%;
-    /* Neon Green */
-    --secondary-foreground: 240 25% 4%;
+    --secondary-foreground: 150 100% 90%;
+    /* Light Green instead of black for better contrast on dark if used as text, or ensure usage is correct */
 
     --muted: 240 20% 15%;
-    --muted-foreground: 180 50% 40%;
+    --muted-foreground: 180 50% 60%;
+    /* Brighter muted text */
 
     --accent: 300 100% 50%;
     --accent-foreground: 240 25% 4%;
@@ -79,34 +112,6 @@
 
     --radius: 0rem;
   }
-
-  .dark {
-    /* Same as root for now, enforcing dark mode aesthetics */
-    --background: 240 25% 4%;
-    --foreground: 180 90% 80%;
-
-    --card: 240 25% 6%;
-    --card-foreground: 180 90% 80%;
-
-    --popover: 240 25% 6%;
-    --popover-foreground: 180 90% 80%;
-
-    --primary: 35 100% 60%;
-    /* Amber */
-    --primary-foreground: 240 25% 4%;
-
-    --secondary: 140 100% 50%;
-    /* Green */
-    --secondary-foreground: 240 25% 4%;
-
-    --muted: 240 20% 10%;
-    --muted-foreground: 180 40% 50%;
-
-    --accent: 35 100% 50%;
-    --accent-foreground: 0 0% 100%;
-
-    --border: 180 50% 25%;
-  }
 }
 
 @layer base {
@@ -116,6 +121,15 @@
 
   body {
     @apply bg-background text-foreground font-sans;
+    background-color: hsl(var(--background));
+    /* Light Mode Grid */
+    background-image:
+      linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+      linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .dark body {
     background-image:
       linear-gradient(rgba(8, 8, 13, 0.9), rgba(8, 8, 13, 0.9)),
       linear-gradient(90deg, rgba(8, 166, 178, 0.05) 1px, transparent 1px),
@@ -162,6 +176,11 @@
   }
 
   .text-shadow-neon {
+    /* No shadow in light mode for crisp text */
+    text-shadow: none;
+  }
+
+  .dark .text-shadow-neon {
     text-shadow: 0 0 5px theme('colors.primary.DEFAULT'), 0 0 10px theme('colors.primary.DEFAULT');
   }
 

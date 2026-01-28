@@ -6,6 +6,7 @@ export interface AnalysisResult {
 	eyes: number
 	hair: number
 	recommendations: string[]
+	potential?: number
 }
 
 export interface FaceAnalyzer {

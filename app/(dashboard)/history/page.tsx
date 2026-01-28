@@ -11,6 +11,7 @@ import {
 	ChevronLeft,
 	ChevronRight,
 } from 'lucide-react'
+import { RatingCard } from '@/components/RatingCard'
 
 interface HistoryPageProps {
 	searchParams: Promise<{ [key: string]: string | string[] | undefined }>
@@ -51,36 +52,43 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
 	const totalCount = count || 0
 	const totalPages = Math.ceil(totalCount / PER_PAGE)
 
-	// Process ratings to refresh signed URLs
-	const ratingsWithSignedUrls = await Promise.all(
-		(ratings || []).map(async (rating: any) => {
-			let path = rating.photos?.image_url
-
-			// Try to recover path from expired URL if necessary
+	// Bulk refresh signed URLs for better performance
+	const ratingsData = ratings || []
+	const pathsToSign = ratingsData
+		.map((r: any) => {
+			let path = r.photos?.image_url
 			if (path && path.includes('/sign/photos/')) {
 				const match = path.match(/\/sign\/photos\/(.*?)\?/)
 				if (match) path = match[1]
 			}
+			return path && !path.startsWith('http') ? path : null
+		})
+		.filter(Boolean) as string[]
 
-			// If it's a path (not a full url) or we extracted it, sign it
-			if (path && !path.startsWith('http')) {
-				const { data } = await supabase.storage
+	const { data: signedUrls } =
+		pathsToSign.length > 0
+			? await supabase.storage
 					.from('photos')
-					.createSignedUrl(path, 3600)
-				if (data?.signedUrl) {
-					return { ...rating, signedUrl: data.signedUrl }
-				}
-			}
+					.createSignedUrls(pathsToSign, 3600)
+			: { data: [] }
 
-			return { ...rating, signedUrl: rating.photos?.image_url }
-		}),
-	)
+	const signedUrlMap = new Map(signedUrls?.map(s => [s.path, s.signedUrl]))
+
+	const ratingsWithSignedUrls = ratingsData.map((rating: any) => {
+		let path = rating.photos?.image_url
+		if (path && path.includes('/sign/photos/')) {
+			const match = path.match(/\/sign\/photos\/(.*?)\?/)
+			if (match) path = match[1]
+		}
+		const signedUrl = signedUrlMap.get(path) || rating.photos?.image_url
+		return { ...rating, signedUrl }
+	})
 
 	return (
 		<div className='container mx-auto p-4 md:p-8 space-y-8'>
 			<div className='flex justify-between items-center border-b border-primary/20 pb-4'>
 				<div>
-					<h1 className='text-3xl font-mono font-bold tracking-widest text-primary text-shadow-neon'>
+					<h1 className='text-3xl font-mono font-bold tracking-widest text-primary dark:text-shadow-neon'>
 						ARCHIVES
 					</h1>
 					<p className='text-sm text-muted-foreground font-mono mt-1'>
@@ -107,82 +115,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
 				<div className='space-y-8'>
 					<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
 						{ratingsWithSignedUrls.map((rating: any) => (
-							<div key={rating.id} className='block group relative'>
-								<CyberCard className='h-full p-0 overflow-hidden border-primary/30 group-hover:border-primary transition-colors hover:shadow-[0_0_20px_rgba(var(--primary),0.2)]'>
-									{/* Header Image Area */}
-									<div className='relative aspect-square w-full bg-black/50'>
-										<div className='absolute inset-0 bg-gradient-to-b from-transparent to-black/90 z-10' />
-
-										{rating.signedUrl ? (
-											// eslint-disable-next-line @next/next/no-img-element
-											<img
-												src={rating.signedUrl}
-												alt='Subject'
-												className='w-full h-full object-cover grayscale-[0.8] group-hover:grayscale-0 transition-all duration-700'
-											/>
-										) : (
-											<div className='w-full h-full flex items-center justify-center text-muted-foreground bg-secondary/10'>
-												<span className='text-xs font-mono'>IMG_EXP</span>
-											</div>
-										)}
-
-										<div className='absolute top-3 right-3 z-20 flex gap-2'>
-											<div className='bg-black/80 backdrop-blur-md border border-primary/50 px-3 py-1 rounded-sm'>
-												<span className='text-xl font-bold font-mono text-primary text-shadow-neon'>
-													{rating.score}
-												</span>
-											</div>
-										</div>
-
-										<div className='absolute top-3 left-3 z-20'>
-											<DeleteButton ratingId={rating.id} />
-										</div>
-
-										<div className='absolute bottom-3 left-3 z-20 flex items-center gap-2 text-xs font-mono text-primary/80'>
-											<Calendar className='w-3 h-3' />
-											{new Date(rating.created_at).toLocaleDateString()}
-										</div>
-									</div>
-
-									{/* Body Stats Area */}
-									<div className='p-4 space-y-4 relative'>
-										<div className='grid grid-cols-3 gap-2 text-center'>
-											<div className='p-2 bg-secondary/5 rounded-sm border border-secondary/10'>
-												<div className='text-[10px] text-muted-foreground uppercase'>
-													Jaw
-												</div>
-												<div className='text-lg font-mono font-bold text-secondary'>
-													{rating.jawline}
-												</div>
-											</div>
-											<div className='p-2 bg-primary/5 rounded-sm border border-primary/10'>
-												<div className='text-[10px] text-muted-foreground uppercase'>
-													Skin
-												</div>
-												<div className='text-lg font-mono font-bold text-primary'>
-													{rating.skin}
-												</div>
-											</div>
-											<div className='p-2 bg-secondary/5 rounded-sm border border-secondary/10'>
-												<div className='text-[10px] text-muted-foreground uppercase'>
-													Eye
-												</div>
-												<div className='text-lg font-mono font-bold text-secondary'>
-													{rating.eyes}
-												</div>
-											</div>
-										</div>
-
-										<div className='pl-2 border-l-2 border-primary/30'>
-											<p className='text-xs text-muted-foreground line-clamp-2 font-mono'>
-												{rating.recommendations?.[0]
-													? `"${rating.recommendations[0]}"`
-													: 'No protocols available.'}
-											</p>
-										</div>
-									</div>
-								</CyberCard>
-							</div>
+							<RatingCard key={rating.id} rating={rating} />
 						))}
 					</div>
 

@@ -16,6 +16,8 @@ import {
 	Fingerprint,
 } from 'lucide-react'
 import Link from 'next/link'
+import { RatingCard } from '@/components/RatingCard'
+import { cn } from '@/lib/utils'
 
 interface AdminPageProps {
 	searchParams: Promise<{ [key: string]: string | string[] | undefined }>
@@ -81,26 +83,37 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 	// I will remove "scans today" detail to optimize, or keep it as "recent scans today" (from fetched).
 	// Actually, let's keep it simple.
 
-	// Process ratings to refresh signed URLs
-	// User admin client to sign URLs to ensure we have permission to access other users' files
-	const ratingsWithSignedUrls = await Promise.all(
-		(ratings || []).map(async (rating: any) => {
-			let path = rating.photos?.image_url
+	// Bulk refresh signed URLs using Admin Client for all users' photos
+	const ratingsData = ratings || []
+	const pathsToSign = ratingsData
+		.map((r: any) => {
+			let path = r.photos?.image_url
 			if (path && path.includes('/sign/photos/')) {
 				const match = path.match(/\/sign\/photos\/(.*?)\?/)
 				if (match) path = match[1]
 			}
-			if (path && !path.startsWith('http')) {
-				const { data } = await supabaseAdmin.storage
+			return path && !path.startsWith('http') ? path : null
+		})
+		.filter(Boolean) as string[]
+
+	const { data: signedUrls } =
+		pathsToSign.length > 0
+			? await supabaseAdmin.storage
 					.from('photos')
-					.createSignedUrl(path, 3600)
-				if (data?.signedUrl) {
-					return { ...rating, signedUrl: data.signedUrl }
-				}
-			}
-			return { ...rating, signedUrl: rating.photos?.image_url }
-		}),
-	)
+					.createSignedUrls(pathsToSign, 3600)
+			: { data: [] }
+
+	const signedUrlMap = new Map(signedUrls?.map(s => [s.path, s.signedUrl]))
+
+	const ratingsWithSignedUrls = ratingsData.map((rating: any) => {
+		let path = rating.photos?.image_url
+		if (path && path.includes('/sign/photos/')) {
+			const match = path.match(/\/sign\/photos\/(.*?)\?/)
+			if (match) path = match[1]
+		}
+		const signedUrl = signedUrlMap.get(path) || rating.photos?.image_url
+		return { ...rating, signedUrl }
+	})
 
 	return (
 		<div className='container mx-auto p-4 md:p-8 space-y-8'>
@@ -154,49 +167,54 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 			</div>
 
 			{/* User Directory */}
-			<CyberCard className='border-primary/30'>
-				<h2 className='text-xl font-mono font-bold text-primary tracking-widest mb-4 flex items-center gap-2'>
-					<Users className='w-5 h-5' /> AGENT_DIRECTORY
-				</h2>
-				<div className='rounded-md border border-primary/20 overflow-hidden'>
-					<div className='bg-primary/10 p-3 grid grid-cols-12 gap-4 text-xs font-mono text-primary font-bold uppercase tracking-wider'>
-						<div className='col-span-4'>Email</div>
-						<div className='col-span-3'>ID</div>
-						<div className='col-span-3'>Joined</div>
-						<div className='col-span-2 text-right'>Last Seen</div>
-					</div>
-					<div className='max-h-[300px] overflow-y-auto custom-scrollbar'>
-						{users?.map((u, i) => (
-							<div
-								key={u.id}
-								className={`p-3 grid grid-cols-12 gap-4 text-xs font-mono border-t border-primary/10 items-center hover:bg-primary/5 transition-colors group ${i % 2 === 0 ? 'bg-black/20' : 'bg-transparent'}`}
-							>
-								<div className='col-span-4 flex items-center gap-2 truncate text-foreground/90'>
-									<Mail className='w-3 h-3 text-muted-foreground' />
-									{u.email}
-								</div>
+			<CyberCard className='border-primary/30 p-0 md:p-6 overflow-hidden'>
+				<div className='p-6 md:p-0'>
+					<h2 className='text-xl font-mono font-bold text-primary tracking-widest mb-4 flex items-center gap-2'>
+						<Users className='w-5 h-5' /> AGENT_DIRECTORY
+					</h2>
+					<div className='rounded-md border border-primary/20 bg-black/20'>
+						{/* Table Header - Hidden on small mobile */}
+						<div className='hidden md:grid bg-primary/10 p-3 grid-cols-12 gap-4 text-xs font-mono text-primary font-bold uppercase tracking-wider'>
+							<div className='col-span-4'>Email</div>
+							<div className='col-span-3'>ID</div>
+							<div className='col-span-3'>Joined</div>
+							<div className='col-span-2 text-right'>Actions</div>
+						</div>
+						<div className='max-h-[400px] overflow-y-auto custom-scrollbar'>
+							{users?.map((u, i) => (
 								<div
-									className='col-span-3 flex items-center gap-2 text-muted-foreground truncate'
-									title={u.id}
+									key={u.id}
+									className={cn(
+										'p-4 md:p-3 flex flex-col md:grid md:grid-cols-12 gap-2 md:gap-4 text-xs font-mono border-t border-primary/10 transition-colors group',
+										i % 2 === 0 ? 'bg-primary/5' : 'bg-transparent',
+									)}
 								>
-									<Fingerprint className='w-3 h-3' />
-									{u.id.split('-')[0]}...
-								</div>
-								<div className='col-span-3 text-muted-foreground'>
-									{new Date(u.created_at).toLocaleDateString()}
-								</div>
-								<div className='col-span-2 text-right text-muted-foreground relative min-h-[24px] flex items-center justify-end'>
-									<span className='group-hover:opacity-0 transition-opacity duration-200'>
-										{u.last_sign_in_at
-											? new Date(u.last_sign_in_at).toLocaleDateString()
-											: 'Never'}
-									</span>
-									<div className='absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200'>
+									<div className='md:col-span-4 flex items-center gap-2 truncate text-foreground/90 font-bold md:font-normal'>
+										<Mail className='w-3 h-3 text-primary/70 shrink-0' />
+										<span className='truncate'>{u.email}</span>
+									</div>
+									<div className='md:col-span-3 flex items-center gap-2 text-muted-foreground truncate opacity-70 md:opacity-100'>
+										<span className='md:hidden text-[10px] text-primary/40 uppercase w-12'>
+											UID:
+										</span>
+										<Fingerprint className='w-3 h-3 hidden md:block' />
+										<span className='truncate'>{u.id}</span>
+									</div>
+									<div className='md:col-span-3 flex items-center gap-2 text-muted-foreground'>
+										<span className='md:hidden text-[10px] text-primary/40 uppercase w-12'>
+											DATE:
+										</span>
+										{new Date(u.created_at).toLocaleDateString()}
+									</div>
+									<div className='md:col-span-2 flex items-center justify-between md:justify-end gap-2 mt-2 md:mt-0 pt-2 md:pt-0 border-t border-primary/5 md:border-0'>
+										<span className='md:hidden text-[10px] text-primary/40 uppercase'>
+											Operations
+										</span>
 										<UserActions userId={u.id} />
 									</div>
 								</div>
-							</div>
-						))}
+							))}
+						</div>
 					</div>
 				</div>
 			</CyberCard>
@@ -211,93 +229,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 						PAGE {page} / {totalPages}
 					</div>
 				</div>
-
 				<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
 					{ratingsWithSignedUrls.map((rating: any) => (
-						<div key={rating.id} className='block group relative'>
-							<CyberCard className='h-full p-0 overflow-hidden border-primary/30 group-hover:border-primary transition-colors hover:shadow-[0_0_20px_rgba(var(--primary),0.2)]'>
-								{/* Header Image Area */}
-								<div className='relative aspect-square w-full bg-black/50'>
-									<div className='absolute inset-0 bg-gradient-to-b from-transparent to-black/90 z-10' />
-
-									{rating.signedUrl ? (
-										// eslint-disable-next-line @next/next/no-img-element
-										<img
-											src={rating.signedUrl}
-											alt='Subject'
-											className='w-full h-full object-cover grayscale-[0.8] group-hover:grayscale-0 transition-all duration-700'
-										/>
-									) : (
-										<div className='w-full h-full flex items-center justify-center text-muted-foreground bg-secondary/10'>
-											<span className='text-xs font-mono'>IMG_EXP</span>
-										</div>
-									)}
-
-									<div className='absolute top-3 right-3 z-20 flex gap-2'>
-										<div className='bg-black/80 backdrop-blur-md border border-primary/50 px-3 py-1 rounded-sm'>
-											<span className='text-xl font-bold font-mono text-primary text-shadow-neon'>
-												{rating.score}
-											</span>
-										</div>
-									</div>
-
-									<div className='absolute top-3 left-3 z-20'>
-										<DeleteButton ratingId={rating.id} />
-									</div>
-
-									<div className='absolute bottom-3 left-3 z-20 flex flex-col gap-1 text-xs font-mono text-primary/80'>
-										<div className='flex items-center gap-2'>
-											<Calendar className='w-3 h-3' />
-											{new Date(rating.created_at).toLocaleDateString()}
-										</div>
-										<div className='text-[10px] text-muted-foreground bg-black/50 px-1 rounded truncate max-w-[150px]'>
-											USER: {rating.photos?.user_id || 'Unknown'}
-										</div>
-									</div>
-								</div>
-
-								{/* Body Stats Area */}
-								<div className='p-4 space-y-4 relative'>
-									<div className='grid grid-cols-3 gap-2 text-center'>
-										<div className='p-2 bg-secondary/5 rounded-sm border border-secondary/10'>
-											<div className='text-[10px] text-muted-foreground uppercase'>
-												Jaw
-											</div>
-											<div className='text-lg font-mono font-bold text-secondary'>
-												{rating.jawline}
-											</div>
-										</div>
-										<div className='p-2 bg-primary/5 rounded-sm border border-primary/10'>
-											<div className='text-[10px] text-muted-foreground uppercase'>
-												Skin
-											</div>
-											<div className='text-lg font-mono font-bold text-primary'>
-												{rating.skin}
-											</div>
-										</div>
-										<div className='p-2 bg-secondary/5 rounded-sm border border-secondary/10'>
-											<div className='text-[10px] text-muted-foreground uppercase'>
-												Eye
-											</div>
-											<div className='text-lg font-mono font-bold text-secondary'>
-												{rating.eyes}
-											</div>
-										</div>
-									</div>
-
-									<div className='pl-2 border-l-2 border-primary/30'>
-										<p className='text-xs text-muted-foreground line-clamp-2 font-mono'>
-											{rating.recommendations?.[0]
-												? `"${rating.recommendations[0]}"`
-												: 'No protocols available.'}
-										</p>
-									</div>
-								</div>
-							</CyberCard>
-						</div>
+						<RatingCard key={rating.id} rating={rating} isAdmin={true} />
 					))}
 				</div>
-
 				{/* Pagination Controls */}
 				{/* Pagination Controls */}
 				<div className='flex justify-center items-center gap-4 mt-8 pt-4 border-t border-primary/20'>

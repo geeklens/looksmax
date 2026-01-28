@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { analyzeFace } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { AnalysisResult } from '@/lib/ai/analyzer'
+import { useFaceAnalyzer } from '@/hooks/use-face-analyzer'
 import { CyberCard } from '@/components/ui/cyber-card'
 import { StatCard } from '@/components/ui/stat-card'
 import {
@@ -24,6 +26,7 @@ export function AnalyzeForm({ userId }: { userId: string }) {
 	const [preview, setPreview] = useState<string | null>(null)
 	const [loading, setLoading] = useState(false)
 	const [result, setResult] = useState<AnalysisResult | null>(null)
+	const { analyzeImage, isLoadingModel, error: modelError } = useFaceAnalyzer()
 
 	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		if (e.target.files && e.target.files[0]) {
@@ -40,6 +43,30 @@ export function AnalyzeForm({ userId }: { userId: string }) {
 		setResult(null)
 
 		try {
+			// 1. Client-Side Analysis (Free & Private)
+			let clientAnalysis = null
+			if (!isLoadingModel && !modelError && file) {
+				try {
+					const geometry = await analyzeImage(file)
+					// Filter data to match DB schema strictly
+					clientAnalysis = {
+						score: geometry.score,
+						jawline: geometry.jawline,
+						skin: geometry.skin,
+						symmetry: geometry.symmetry,
+						eyes: geometry.eyes,
+						hair: geometry.hair,
+						recommendations: [
+							'Focus on jawline exercises (mewing)',
+							'Improve skin care routine',
+							'Maintain symmetry through posture',
+						],
+					}
+				} catch (aiError) {
+					console.warn('Client AI failed, falling back to server', aiError)
+				}
+			}
+
 			const supabase = createClient()
 			const ext = file.name.split('.').pop()
 			const path = `${userId}/${Date.now()}.${ext}`
@@ -57,7 +84,12 @@ export function AnalyzeForm({ userId }: { userId: string }) {
 			if (signedError || !signedUrlData)
 				throw new Error('Failed to get signed url')
 
-			const resultData = await analyzeFace(signedUrlData.signedUrl, path)
+			// Pass client results to server to save processing power/costs
+			const resultData = await analyzeFace(
+				signedUrlData.signedUrl,
+				path,
+				clientAnalysis,
+			)
 			setResult(resultData)
 		} catch (err: any) {
 			console.error(err)
@@ -79,7 +111,7 @@ export function AnalyzeForm({ userId }: { userId: string }) {
 								Upload Subject
 							</h2>
 						</div>
-						<div className='p-8 border-2 border-dashed border-muted rounded-lg hover:border-primary/50 transition-colors bg-black/20 flex flex-col items-center justify-center gap-4 relative'>
+						<div className='p-8 border-2 border-dashed border-muted rounded-lg hover:border-primary/50 transition-colors bg-muted/20 dark:bg-black/20 flex flex-col items-center justify-center gap-4 relative'>
 							<Input
 								type='file'
 								onChange={handleFileChange}
@@ -101,11 +133,16 @@ export function AnalyzeForm({ userId }: { userId: string }) {
 						</div>
 						<Button
 							onClick={handleUpload}
-							disabled={loading || !file}
-							className='w-full bg-primary text-black hover:bg-primary/90 font-mono font-bold tracking-wider'
+							disabled={loading || !file || isLoadingModel}
+							className='w-full bg-primary text-primary-foreground hover:bg-primary/90 font-mono font-bold tracking-wider'
 							size='lg'
 						>
-							{loading ? (
+							{isLoadingModel ? (
+								<span className='flex items-center gap-2'>
+									<Activity className='animate-pulse w-4 h-4' />
+									INITIALIZING AI CORE...
+								</span>
+							) : loading ? (
 								<span className='flex items-center gap-2'>
 									<Activity className='animate-pulse w-4 h-4' />
 									PROCESSING...
@@ -132,19 +169,19 @@ export function AnalyzeForm({ userId }: { userId: string }) {
 								<div className='absolute top-0 left-0 w-full h-1 bg-primary/50 shadow-[0_0_15px_rgba(var(--primary),0.8)] z-20 animate-[scan_3s_ease-in-out_infinite]' />
 
 								{preview && (
-									// eslint-disable-next-line @next/next/no-img-element
-									<img
+									<Image
 										src={preview}
 										alt='Subject'
-										className='w-full h-full object-cover grayscale-[0.3] contrast-125'
+										fill
+										className='object-cover grayscale-[0.3] contrast-125'
 									/>
 								)}
 
 								<div className='absolute bottom-4 left-4 z-20'>
-									<h3 className='text-2xl font-bold font-mono text-primary text-shadow-neon'>
+									<h3 className='text-2xl font-bold font-mono text-white dark:text-primary text-shadow-neon'>
 										{result.score}
 									</h3>
-									<p className='text-xs text-primary/70 font-mono'>
+									<p className='text-xs text-white/70 dark:text-primary/70 font-mono'>
 										OVERALL SCORE
 									</p>
 								</div>
@@ -189,7 +226,7 @@ export function AnalyzeForm({ userId }: { userId: string }) {
 							/>
 							<StatCard
 								label='Potential'
-								value='MAX'
+								value={result.potential || 100}
 								icon={Orbit}
 								description='Projected Limit'
 								color='secondary'
@@ -205,12 +242,12 @@ export function AnalyzeForm({ userId }: { userId: string }) {
 								{result.recommendations.map((rec, i) => (
 									<div
 										key={i}
-										className='flex items-start gap-4 p-3 bg-secondary/5 border border-secondary/20 rounded-sm'
+										className='flex items-start gap-4 p-3 bg-secondary/10 border border-secondary/20 rounded-sm'
 									>
-										<span className='text-secondary font-mono text-sm opacity-50'>
+										<span className='text-secondary font-mono text-sm opacity-70'>
 											0{i + 1}
 										</span>
-										<p className='text-sm font-mono text-secondary-foreground/90'>
+										<p className='text-sm font-mono text-foreground/90 dark:text-secondary-foreground/90'>
 											{rec}
 										</p>
 									</div>

@@ -5,7 +5,11 @@ import { createClient } from '@/lib/supabase/server'
 import { getAnalyzer } from '@/lib/ai/getAnalyzer'
 import { revalidatePath } from 'next/cache'
 
-export async function analyzeFace(imageUrl: string, storagePath?: string) {
+export async function analyzeFace(
+	imageUrl: string,
+	storagePath?: string,
+	clientResults?: any,
+) {
 	const supabase = await createClient()
 
 	const {
@@ -32,8 +36,25 @@ export async function analyzeFace(imageUrl: string, storagePath?: string) {
 	}
 
 	// 2. Analyze
-	const analyzer = getAnalyzer()
-	const result = await analyzer.analyze(imageUrl)
+	// 2. Analyze
+	let rawResult
+	if (clientResults) {
+		rawResult = clientResults
+	} else {
+		const analyzer = getAnalyzer()
+		rawResult = await analyzer.analyze(imageUrl)
+	}
+
+	// Filter to ensure we match DB schema (remove extra fields like cheekbones, nose)
+	const result = {
+		score: rawResult.score,
+		jawline: rawResult.jawline,
+		skin: rawResult.skin,
+		symmetry: rawResult.symmetry,
+		eyes: rawResult.eyes,
+		hair: rawResult.hair,
+		recommendations: rawResult.recommendations || [],
+	}
 
 	// 3. Save Rating (Use Admin Client to bypass RLS complexity for system generated data)
 	const { error: ratingError } = await supabaseAdmin.from('ratings').insert({
@@ -49,7 +70,10 @@ export async function analyzeFace(imageUrl: string, storagePath?: string) {
 	revalidatePath('/history')
 	revalidatePath('/admin')
 
-	return result
+	return {
+		...result,
+		potential: rawResult.potential,
+	}
 }
 
 export async function deleteRating(ratingId: string) {
@@ -172,4 +196,30 @@ export async function manageUser(
 	}
 
 	revalidatePath('/admin')
+}
+
+export async function adminResetPassword(userId: string, newPassword: string) {
+	const supabase = await createClient()
+	const {
+		data: { user },
+	} = await supabase.auth.getUser()
+
+	if (!user || user.app_metadata?.role !== 'admin') {
+		throw new Error('Unauthorized')
+	}
+
+	if (newPassword.length < 6) {
+		throw new Error('Password must be at least 6 characters')
+	}
+
+	const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+		password: newPassword,
+	})
+
+	if (error) {
+		console.error('Reset password error:', error)
+		throw new Error(error.message)
+	}
+
+	return { success: true }
 }

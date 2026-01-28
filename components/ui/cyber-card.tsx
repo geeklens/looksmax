@@ -28,7 +28,7 @@ export function CyberCard({
 	return (
 		<div
 			className={cn(
-				'relative p-6 bg-card/40 backdrop-blur-md border',
+				'relative p-6 bg-card dark:bg-card/40 backdrop-blur-sm border',
 				borderColor,
 				className,
 			)}
