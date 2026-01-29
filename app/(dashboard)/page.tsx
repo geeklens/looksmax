@@ -12,9 +12,11 @@ export default async function Home() {
 
 	return (
 		<div className='flex flex-col gap-8'>
-			<div className='w-full max-w-2xl mx-auto text-center'>
-				<h1 className='text-4xl font-bold mb-4'>AI Face Analysis</h1>
-				<p className='text-muted-foreground'>
+			<div className='w-full max-w-2xl mx-auto text-center px-4'>
+				<h1 className='text-2xl md:text-4xl font-bold mb-4 text-balance'>
+					AI Face Analysis
+				</h1>
+				<p className='text-muted-foreground text-sm md:text-base'>
 					Upload a photo to get a detailed aesthetic analysis.
 				</p>
 			</div>

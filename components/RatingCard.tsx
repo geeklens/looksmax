@@ -15,6 +15,7 @@ import {
 	X,
 	Info,
 	Database,
+	Download,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createPortal } from 'react-dom'
@@ -30,6 +31,7 @@ export function RatingCard({ rating, isAdmin = false }: RatingCardProps) {
 	const [isOpen, setIsOpen] = useState(false)
 	const [mounted, setMounted] = useState(false)
 	const [imageLoading, setImageLoading] = useState(true)
+	const [hasError, setHasError] = useState(false)
 
 	useEffect(() => {
 		setMounted(true)
@@ -79,6 +81,11 @@ export function RatingCard({ rating, isAdmin = false }: RatingCardProps) {
 		},
 	]
 
+	// Unified error check: either invalid URL format or load error
+	const isValidUrl =
+		imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('/'))
+	const showImage = isValidUrl && !hasError
+
 	return (
 		<>
 			<div
@@ -90,13 +97,17 @@ export function RatingCard({ rating, isAdmin = false }: RatingCardProps) {
 					<div className='relative aspect-square w-full bg-black/50'>
 						<div className='absolute inset-0 bg-gradient-to-b from-transparent to-black/90 z-10' />
 
-						{imageUrl ? (
+						{showImage ? (
 							<Image
 								src={imageUrl}
 								alt='Subject'
 								fill
 								sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
 								onLoad={() => setImageLoading(false)}
+								onError={() => {
+									setImageLoading(false)
+									setHasError(true)
+								}}
 								className={cn(
 									'object-cover transition-all duration-700',
 									imageLoading
@@ -105,8 +116,13 @@ export function RatingCard({ rating, isAdmin = false }: RatingCardProps) {
 								)}
 							/>
 						) : (
-							<div className='w-full h-full flex items-center justify-center text-muted-foreground bg-secondary/10'>
-								<span className='text-xs font-mono'>IMG_EXP</span>
+							<div className='w-full h-full flex flex-col items-center justify-center text-muted-foreground bg-secondary/10 p-4 text-center'>
+								<span className='text-xs font-mono mb-1 text-red-500 font-bold'>
+									[N/A]
+								</span>
+								<span className='text-[10px] opacity-100 font-mono'>
+									DATA_CORRUPTED
+								</span>
 							</div>
 						)}
 
@@ -198,13 +214,21 @@ export function RatingCard({ rating, isAdmin = false }: RatingCardProps) {
 									<div className='space-y-6'>
 										<CyberCard className='p-0 overflow-hidden border-primary/50 aspect-[3/4] relative'>
 											<div className='absolute inset-0 bg-[linear-gradient(rgba(0,255,0,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,0,0.05)_1px,transparent_1px)] bg-[size:30px_30px] z-10' />
-											{imageUrl && (
+											{showImage ? (
 												<Image
 													src={imageUrl}
 													alt='Detailed Subject'
 													fill
 													className='object-cover'
+													onError={() => setHasError(true)}
 												/>
+											) : (
+												<div className='absolute inset-0 flex items-center justify-center text-red-500/50 font-mono flex-col'>
+													<span className='font-bold text-lg'>
+														DATA_CORRUPTED
+													</span>
+													<span className='text-xs'>[VISUAL_DATA_LOST]</span>
+												</div>
 											)}
 											<div className='absolute bottom-6 left-6 z-20'>
 												<div className='text-4xl font-bold font-mono text-primary text-shadow-neon'>
@@ -215,8 +239,37 @@ export function RatingCard({ rating, isAdmin = false }: RatingCardProps) {
 												</div>
 											</div>
 
-											<div className='absolute top-6 left-6 z-20'>
+											<div className='absolute top-6 left-6 z-20 flex gap-2'>
 												<DeleteButton ratingId={rating.id} />
+												{isAdmin && showImage && (
+													<Button
+														variant='ghost'
+														size='icon'
+														className='bg-black/40 hover:bg-primary/80 text-white/70 hover:text-white border border-white/10 hover:border-primary h-8 w-8 backdrop-blur-sm transition-all shadow-lg'
+														onClick={async e => {
+															e.preventDefault()
+															e.stopPropagation()
+															try {
+																const response = await fetch(imageUrl)
+																const blob = await response.blob()
+																const url = window.URL.createObjectURL(blob)
+																const a = document.createElement('a')
+																a.href = url
+																a.download = `looksmax-scan-${rating.id}.jpg`
+																document.body.appendChild(a)
+																a.click()
+																window.URL.revokeObjectURL(url)
+																document.body.removeChild(a)
+															} catch (err) {
+																console.error('Download failed', err)
+																// Fallback if fetch fails (CORS etc)
+																window.open(imageUrl, '_blank')
+															}
+														}}
+													>
+														<Download className='w-4 h-4' />
+													</Button>
+												)}
 											</div>
 										</CyberCard>
 

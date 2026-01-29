@@ -23,6 +23,7 @@ export const metadata: Metadata = {
 }
 
 import { ThemeProvider } from '@/components/theme-provider'
+import NextTopLoader from 'nextjs-toploader'
 
 export default function RootLayout({
 	children,
@@ -40,6 +41,7 @@ export default function RootLayout({
 					enableSystem
 					disableTransitionOnChange
 				>
+					<NextTopLoader showSpinner={false} color='hsl(var(--primary))' />
 					{children}
 				</ThemeProvider>
 			</body>

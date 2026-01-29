@@ -82,9 +82,11 @@ export function useFaceAnalyzer() {
 			img.onerror = reject
 		})
 
-		canvas.width = img.width
-		canvas.height = img.height
-		ctx.drawImage(img, 0, 0)
+		const MAX_WIDTH = 1280
+		const scale = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1
+		canvas.width = Math.floor(img.width * scale)
+		canvas.height = Math.floor(img.height * scale)
+		ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
 
 		let result: FaceLandmarkerResult
 		try {

@@ -41,14 +41,35 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 	// Await search params for Next.js 15+
 	const params = await searchParams
 	const page = typeof params.page === 'string' ? parseInt(params.page) : 1
-	const PER_PAGE = 10
+	// Grid layout:
+	// Mobile: 1 col
+	// Tablet: 2 cols
+	// Desktop: 3 cols
+	// Large: 4 cols
+	// 12 is divisible by 2, 3, and 4, ensuring rows are always full on all screens.
+	const PER_PAGE = 12
 	const from = (page - 1) * PER_PAGE
 	const to = from + PER_PAGE - 1
 
 	// Fetch Data
+	const USER_PER_PAGE = 50 // Keep user list more compact
+	// Supabase admin listUsers supports pagination somewhat, but it's cursor based or simple page/perPage depending on wrapper
 	const {
 		data: { users },
-	} = await supabaseAdmin.auth.admin.listUsers()
+	} = await supabaseAdmin.auth.admin.listUsers({
+		page: 1, // listUsers default pagination is per page 50. But here we want all for now or proper pagination.
+		perPage: 1000,
+	})
+	// Client side pagination for users since listUsers API is limited for complex sorting/filtering
+	// Or we just implement basic slice if list is huge.
+
+	// Let's implement client-side slicing for users for now to keep UI clean
+	const usersPage =
+		typeof params.userPage === 'string' ? parseInt(params.userPage) : 1
+	const totalUsersCount = users.length
+	const totalUserPages = Math.ceil(totalUsersCount / USER_PER_PAGE)
+	const startUser = (usersPage - 1) * USER_PER_PAGE
+	const paginatedUsers = users.slice(startUser, startUser + USER_PER_PAGE)
 
 	// Use Admin client to fetch ratings to bypass RLS and ensure we see ALL users' data
 	const { data: ratings, count } = await supabaseAdmin
@@ -181,7 +202,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 							<div className='col-span-2 text-right'>Actions</div>
 						</div>
 						<div className='max-h-[400px] overflow-y-auto custom-scrollbar'>
-							{users?.map((u, i) => (
+							{paginatedUsers?.map((u, i) => (
 								<div
 									key={u.id}
 									className={cn(
@@ -214,6 +235,28 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 									</div>
 								</div>
 							))}
+						</div>
+						{/* User Pagination */}
+						<div className='p-2 flex justify-between items-center bg-primary/5 text-xs font-mono border-t border-primary/10'>
+							<span className='text-muted-foreground'>
+								PAGE {usersPage} OF {totalUserPages}
+							</span>
+							<div className='flex gap-2'>
+								{usersPage > 1 && (
+									<Link href={`/admin?page=${page}&userPage=${usersPage - 1}`}>
+										<Button size='sm' variant='ghost' className='h-6 w-6 p-0'>
+											{'<'}
+										</Button>
+									</Link>
+								)}
+								{usersPage < totalUserPages && (
+									<Link href={`/admin?page=${page}&userPage=${usersPage + 1}`}>
+										<Button size='sm' variant='ghost' className='h-6 w-6 p-0'>
+											{'>'}
+										</Button>
+									</Link>
+								)}
+							</div>
 						</div>
 					</div>
 				</div>

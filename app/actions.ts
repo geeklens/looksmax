@@ -105,7 +105,18 @@ export async function deleteRating(ratingId: string) {
 		}
 	}
 
-	// Delete the photo record
+	// 1. Delete the rating record explicitly (to ensure no ghost cards)
+	const { error: deleteRatingError } = await clientToUse
+		.from('ratings')
+		.delete()
+		.eq('id', ratingId)
+
+	if (deleteRatingError) {
+		console.error('Delete rating error:', deleteRatingError)
+		throw new Error('Failed to delete rating')
+	}
+
+	// 2. Delete the photo record
 	// Using admin client for admin users ensures RLS is bypassed for deletion of others' data
 	const { error: deleteError } = await clientToUse
 		.from('photos')
@@ -113,8 +124,9 @@ export async function deleteRating(ratingId: string) {
 		.eq('id', rating.photo_id)
 
 	if (deleteError) {
-		console.error('Delete error:', deleteError)
-		throw new Error('Failed to delete record: ' + deleteError.message)
+		console.error('Delete photo error:', deleteError)
+		// We don't throw here to ensure we continue to try cleaning up storage,
+		// and because the main rating entity is already gone.
 	}
 
 	// Try to delete from storage if we can extract path (Best effort)

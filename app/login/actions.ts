@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
-export async function login(formData: FormData) {
+export async function login(prevState: any, formData: FormData) {
 	const supabase = await createClient()
 
 	const email = formData.get('email') as string
@@ -16,37 +16,34 @@ export async function login(formData: FormData) {
 	})
 
 	if (error) {
-		return redirect(`/error?message=${encodeURIComponent(error.message)}`)
+		return { error: error.message }
 	}
 
 	revalidatePath('/', 'layout')
 	redirect('/')
 }
 
-export async function signup(formData: FormData) {
+export async function signup(prevState: any, formData: FormData) {
 	const supabase = await createClient()
 
 	const email = formData.get('email') as string
 	const password = formData.get('password') as string
 
-	// Common gotcha: Supabase might default to email confirmation.
-	// If you want instant login, disable "Confirm email" in Supabase Auth Settings.
-	// Or we handle the case where session is null.
 	const { data, error } = await supabase.auth.signUp({
 		email,
 		password,
 	})
 
 	if (error) {
-		return redirect(`/error?message=${encodeURIComponent(error.message)}`)
+		return { error: error.message }
 	}
 
 	if (!data.session) {
-		return redirect(
-			`/error?message=${encodeURIComponent(
+		return {
+			success: true,
+			message:
 				'Registration successful! Please check your email to confirm your account.',
-			)}`,
-		)
+		}
 	}
 
 	revalidatePath('/', 'layout')
